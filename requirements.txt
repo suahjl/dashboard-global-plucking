@@ -1,0 +1,11 @@
+pandas
+numpy
+tqdm
+fastparquet
+openpyxl
+xlrd
+kaleido
+python-dotenv
+requests
+ipykernel
+statsmodels
