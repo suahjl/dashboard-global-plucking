@@ -1,3 +1,3 @@
 import compile_input_data
 import compute_plucking
-import push_output
+# import push_output
