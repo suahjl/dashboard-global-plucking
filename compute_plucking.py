@@ -107,7 +107,9 @@ cols_keep = [
 df_ceiling = df_ceiling[cols_keep]
 # Reset indices
 df_ceiling = df_ceiling.reset_index(drop=True)
-# Save local copy
+# Delete MX and BR
+df_ceiling = df_ceiling[~df_ceiling["country"].isin(["mexico", "brazil"])]
+# Save local copy 
 df_ceiling.to_parquet(path_output + "plucking_ugap_quarterly.parquet")
 df_ceiling.to_csv(path_output + "plucking_ugap_quarterly.csv", index=False)
 
