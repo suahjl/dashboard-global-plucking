@@ -1,0 +1,58 @@
+name: Refresh dashboard data
+
+# Re-pulls the unemployment series from FRED, re-estimates the plucking ceilings,
+# and commits the refreshed data-dashboard/ outputs. The portfolio site reads
+# those files directly over raw.githubusercontent.com, so a commit here is a
+# publish.
+on:
+  schedule:
+    # Mondays 06:00 UTC. The series are quarterly, so weekly is plenty to pick
+    # up FRED revisions without churning the repo.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create gitignored intermediate directory
+        # /raw-data/*.parquet is gitignored, so the directory is absent in a
+        # fresh checkout and compile_input_data.py's to_parquet would fail.
+        run: mkdir -p raw-data
+
+      - name: Run pipeline
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python main.py
+
+      - name: Commit refreshed data
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data-dashboard
+          # Parquet writes are not byte-reproducible, so gate on the CSVs to
+          # avoid a churn commit every week when the data has not moved.
+          if git diff --cached --quiet -- 'data-dashboard/*.csv'; then
+            echo "No CSV changes - skipping commit."
+            git reset
+          else
+            git commit -m "data: scheduled FRED refresh"
+            git push
+          fi
